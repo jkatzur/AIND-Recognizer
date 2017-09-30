@@ -96,14 +96,57 @@ class SelectorDIC(ModelSelector):
         # TODO implement model selection based on DIC scores
         raise NotImplementedError
 
+def train_a_word(word, num_hidden_states, features):
+
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    training = asl.build_training(features)
+    X, lengths = training.get_word_Xlengths(word)
+    model = GaussianHMM(n_components=num_hidden_states, n_iter=1000).fit(X, lengths)
+    logL = model.score(X, lengths)
+    return model, logL
+
+def show_model_stats(word, model):
+    print("Number of states trained in model for {} is {}".format(word, model.n_components))
+    variance=np.array([np.diag(model.covars_[i]) for i in range(model.n_components)])
+    for i in range(model.n_components):  # for each hidden state
+        print("hidden state #{}".format(i))
+        print("mean = ", model.means_[i])
+        print("variance = ", variance[i])
+        print()
 
 class SelectorCV(ModelSelector):
     ''' select best model based on average log Likelihood of cross-validation folds
 
     '''
-
     def select(self):
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        try:
+            split_method = KFold()
+            min_max = range(self.min_n_components, self.max_n_components+1)
+            values = {i:0 for i in min_max}
+            for i in min_max:
+                tot = 0
+                count = 0
+                if len(self.sequences) > 2:
+                    for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                        self.X, self.lengths = combine_sequences(cv_train_idx,self.sequences)
+                        test_X, test_lengths = combine_sequences(cv_test_idx,self.sequences)
+                        hmm_model = self.base_model(i)
+                        tot += hmm_model.score(test_X, test_lengths)
+                        count += 1
+                    values[i] = float(tot) / float(count)
+                else:
+                    hmm_model = self.base_model(i)
+                    values[i] = hmm_model.score(self.X, self.lengths)
+                #print("For I = {} states; Score = {}".format(i, values[i]))
+            best_num_components = self.min_n_components
+            is_max = values[self.min_n_components]
+            for i in min_max:
+                if values[i] > is_max:
+                    is_max = values[i]
+                    best_num_components = i
+            return self.base_model(best_num_components)
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
+            return None
