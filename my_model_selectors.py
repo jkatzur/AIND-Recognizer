@@ -96,56 +96,50 @@ class SelectorDIC(ModelSelector):
         # TODO implement model selection based on DIC scores
         raise NotImplementedError
 
-def train_a_word(word, num_hidden_states, features):
-
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    training = asl.build_training(features)
-    X, lengths = training.get_word_Xlengths(word)
-    model = GaussianHMM(n_components=num_hidden_states, n_iter=1000).fit(X, lengths)
-    logL = model.score(X, lengths)
-    return model, logL
-
-def show_model_stats(word, model):
-    print("Number of states trained in model for {} is {}".format(word, model.n_components))
-    variance=np.array([np.diag(model.covars_[i]) for i in range(model.n_components)])
-    for i in range(model.n_components):  # for each hidden state
-        print("hidden state #{}".format(i))
-        print("mean = ", model.means_[i])
-        print("variance = ", variance[i])
-        print()
-
 class SelectorCV(ModelSelector):
     ''' select best model based on average log Likelihood of cross-validation folds
-
+    This function is aiming to determine the ideal number of components in the HMM
+    To do this, for each number of components (with large enough sample size)
+    We do a cross-validation fold to split Training and Testing data and calculate an average model score
+    We then review the log Likelihood score for each and return the best model
     '''
     def select(self):
-
+        # This is wrapped in a try catch in case the model fails to determine a potential match
         try:
             split_method = KFold()
             min_max = range(self.min_n_components, self.max_n_components+1)
+            # This is how I track the average log Likelihood for each num components
             values = {i:0 for i in min_max}
+            # For each potential number of components do the following...
             for i in min_max:
                 tot = 0
                 count = 0
+                # Only will do cross-validation if there are enough samples
                 if len(self.sequences) > 2:
+                    # Run the cross-validation for each k-fold split
                     for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
                         self.X, self.lengths = combine_sequences(cv_train_idx,self.sequences)
                         test_X, test_lengths = combine_sequences(cv_test_idx,self.sequences)
                         hmm_model = self.base_model(i)
                         tot += hmm_model.score(test_X, test_lengths)
                         count += 1
+                    # calculates log Likelihood given the model scores for each k fold at this number of components
                     values[i] = float(tot) / float(count)
+                # If not enough samples for cross-validation just run the score on the samples
                 else:
                     hmm_model = self.base_model(i)
                     values[i] = hmm_model.score(self.X, self.lengths)
                 #print("For I = {} states; Score = {}".format(i, values[i]))
+            # This section determines which number of components has the highest average log Likelihood
             best_num_components = self.min_n_components
             is_max = values[self.min_n_components]
             for i in min_max:
                 if values[i] > is_max:
                     is_max = values[i]
                     best_num_components = i
+            # Return the best model
             return self.base_model(best_num_components)
+        # Error handle in case model does not return a potential match
         except:
             if self.verbose:
                 print("failure on {} with {} states".format(self.this_word, num_states))
