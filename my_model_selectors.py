@@ -66,6 +66,18 @@ class SelectorBIC(ModelSelector):
 
     http://www2.imm.dtu.dk/courses/02433/doc/ch6_slides.pdf
     Bayesian information criteria: BIC = -2 * logL + p * logN
+
+    where L is the likelihood of the fitted model
+    p is the number of parameters = transistion probs (states**2) + means(states*data) + covars(states*data)
+        where states = is the number of model states and data = number data points
+        this becomes states**2 + 2 * states * N - 1
+    N is the number of data points
+
+    From source...
+    The term −2 log L decreases with increasing model complexity (more parameters)
+    whereas the penalties 2p or p log N increase with increasing complexity
+    The BIC applies a larger penalty whenN>e2 =7.4.
+
     """
 
     def select(self):
@@ -74,10 +86,35 @@ class SelectorBIC(ModelSelector):
 
         :return: GaussianHMM object
         """
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-        # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        try:
+            min_max = range(self.min_n_components, self.max_n_components+1)
+            # This is how I track the BIC for each num components
+            values = {i:0 for i in min_max}
+            # For each potential number of components do the following...
+            for i in min_max:
+                hmm_model = self.base_model(i)
+                # log Likelihood
+                L = hmm_model.score(self.X,self.lengths)
+                # number of data points
+                N = sum(self.lengths)
+                # parameter calculation from
+                p = (i ** 2) + (2 * i * N) - 1
+                values[i] = (-2 * L) + (p * np.log(N))
+                print("For I = {} states; LL = {}, BIC = {}".format(i, L, values[i]))
+            # This section determines which number of components has the highest average log Likelihood
+            best_num_components = self.min_n_components
+            is_max = values[self.min_n_components]
+            for i in min_max:
+                if values[i] > is_max:
+                    is_max = values[i]
+                    best_num_components = i
+            # Return the best model
+            return self.base_model(best_num_components)
+            # Error handle in case model does not return a potential match
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
+            return None
 
 
 class SelectorDIC(ModelSelector):
@@ -130,17 +167,16 @@ class SelectorCV(ModelSelector):
                     hmm_model = self.base_model(i)
                     values[i] = hmm_model.score(self.X, self.lengths)
                 #print("For I = {} states; Score = {}".format(i, values[i]))
-            # This section determines which number of components has the highest average log Likelihood
-            best_num_components = self.min_n_components
-            is_max = values[self.min_n_components]
-            for i in min_max:
-                if values[i] > is_max:
-                    is_max = values[i]
-                    best_num_components = i
-            # Return the best model
-            return self.base_model(best_num_components)
         # Error handle in case model does not return a potential match
         except:
-            if self.verbose:
-                print("failure on {} with {} states".format(self.this_word, num_states))
-            return None
+            pass
+
+        # This section determines which number of components has the highest average log Likelihood
+        best_num_components = self.min_n_components
+        is_max = values[self.min_n_components]
+        for i in min_max:
+            if values[i] > is_max:
+                is_max = values[i]
+                best_num_components = i
+        # Return the best model
+        return self.base_model(best_num_components)
