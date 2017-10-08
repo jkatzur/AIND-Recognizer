@@ -31,6 +31,23 @@ class ModelSelector(object):
     def select(self):
         raise NotImplementedError
 
+    # Created this function within the ModelSelector class so that I could repeat
+    # methodology between SelectorCV, BIC, and DIC methods without repeating code
+    def best_model(self, values, min_max):
+        """
+            Given an array of values representing model score, return the model with the
+            number of components that optimize the model score
+        """
+        # This section determines which number of components has the highest average log Likelihood
+        best_num_components = self.min_n_components
+        is_max = values[self.min_n_components]
+        for i in min_max:
+            if values[i] > is_max:
+                is_max = values[i]
+                best_num_components = i
+        # Return the best model
+        return self.base_model(best_num_components)
+
     def base_model(self, num_states):
         # with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -133,6 +150,7 @@ class SelectorDIC(ModelSelector):
         # TODO implement model selection based on DIC scores
         raise NotImplementedError
 
+
 class SelectorCV(ModelSelector):
     ''' select best model based on average log Likelihood of cross-validation folds
     This function is aiming to determine the ideal number of components in the HMM
@@ -171,12 +189,5 @@ class SelectorCV(ModelSelector):
         except:
             pass
 
-        # This section determines which number of components has the highest average log Likelihood
-        best_num_components = self.min_n_components
-        is_max = values[self.min_n_components]
-        for i in min_max:
-            if values[i] > is_max:
-                is_max = values[i]
-                best_num_components = i
-        # Return the best model
-        return self.base_model(best_num_components)
+        # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
+        return self.best_model(values, min_max)
