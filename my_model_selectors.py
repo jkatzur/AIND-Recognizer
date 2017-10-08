@@ -33,18 +33,24 @@ class ModelSelector(object):
 
     # Created this function within the ModelSelector class so that I could repeat
     # methodology between SelectorCV, BIC, and DIC methods without repeating code
-    def best_model(self, values, min_max):
+    def best_model(self, values, state_range, is_max):
         """
             Given an array of values representing model score, return the model with the
             number of components that optimize the model score
         """
         # This section determines which number of components has the highest average log Likelihood
         best_num_components = self.min_n_components
-        is_max = values[self.min_n_components]
-        for i in min_max:
-            if values[i] > is_max:
-                is_max = values[i]
-                best_num_components = i
+        is_best = values[self.min_n_components]
+        if is_max:
+            for i in state_range:
+                if values[i] > is_best:
+                    is_best = values[i]
+                    best_num_components = i
+        else:
+            for i in state_range:
+                if values[i] < is_best:
+                    is_best = values[i]
+                    best_num_components = i
         # Return the best model
         return self.base_model(best_num_components)
 
@@ -104,34 +110,26 @@ class SelectorBIC(ModelSelector):
         :return: GaussianHMM object
         """
         try:
-            min_max = range(self.min_n_components, self.max_n_components+1)
+            state_range = range(self.min_n_components, self.max_n_components+1)
             # This is how I track the BIC for each num components
-            values = {i:0 for i in min_max}
+            values = {i:0 for i in state_range}
             # For each potential number of components do the following...
-            for i in min_max:
+            for i in state_range:
                 hmm_model = self.base_model(i)
                 # log Likelihood
                 L = hmm_model.score(self.X,self.lengths)
                 # number of data points
-                N = sum(self.lengths)
+                N = len(self.X[0])
                 # parameter calculation from
                 p = (i ** 2) + (2 * i * N) - 1
                 values[i] = (-2 * L) + (p * np.log(N))
-                print("For I = {} states; LL = {}, BIC = {}".format(i, L, values[i]))
-            # This section determines which number of components has the highest average log Likelihood
-            best_num_components = self.min_n_components
-            is_max = values[self.min_n_components]
-            for i in min_max:
-                if values[i] > is_max:
-                    is_max = values[i]
-                    best_num_components = i
-            # Return the best model
-            return self.base_model(best_num_components)
+                #print("For I = {} states; LL = {}, N = {}, P = {}, -2 * L = {}, p * np.log(N) = {},BIC = {}".format(i, L, N, p, (-2 * L), (p * np.log(N)),values[i]))
             # Error handle in case model does not return a potential match
         except:
-            if self.verbose:
-                print("failure on {} with {} states".format(self.this_word, num_states))
-            return None
+            pass
+
+        # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
+        return self.best_model(values, state_range, is_max=False)
 
 
 class SelectorDIC(ModelSelector):
@@ -162,11 +160,11 @@ class SelectorCV(ModelSelector):
         # This is wrapped in a try catch in case the model fails to determine a potential match
         try:
             split_method = KFold()
-            min_max = range(self.min_n_components, self.max_n_components+1)
+            state_range = range(self.min_n_components, self.max_n_components+1)
             # This is how I track the average log Likelihood for each num components
-            values = {i:0 for i in min_max}
+            values = {i:0 for i in state_range}
             # For each potential number of components do the following...
-            for i in min_max:
+            for i in state_range:
                 tot = 0
                 count = 0
                 # Only will do cross-validation if there are enough samples
@@ -190,4 +188,4 @@ class SelectorCV(ModelSelector):
             pass
 
         # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
-        return self.best_model(values, min_max)
+        return self.best_model(values, state_range, is_max=True)
