@@ -35,7 +35,7 @@ def recognize(models: dict, test_set: SinglesData):
             except:
                 prob_dict[trained] = float("-inf")
             # this structure is just a normal pick the max value
-            if test_prof > is_bests:
+            if test_prof > is_best:
                 is_best = test_prof
                 best_word = trained
         probabilities.append(prob_dict)
