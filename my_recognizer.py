@@ -23,18 +23,20 @@ def recognize(models: dict, test_set: SinglesData):
     """
     probabilities = []
     guesses = []
-    # Copied this structure from my DIC implementation - it's a similar sort've paradigm
+    # Copied this structure from my DIC implementation - it's a similar paradigm
+    # Used the same for structure I got from https://discussions.udacity.com/t/dic-always-giving-me-15-states/378722
     for word, (testX, testLengths) in test_set.get_all_Xlengths().items():
         is_best = float("-inf")
         prob_dict = {}
+        # This section runs through all the trained words and model pairs to see which word matches the test word the best
         for (trained, model) in models.items():
-            # This was tricky. I only figured it out through the forum here -> https://discussions.udacity.com/t/failure-in-recognizer-unit-tests/240082/5?u=cleyton_messias
+            # This was tricky. I only figured out that I needed the try except from the forum here -> https://discussions.udacity.com/t/failure-in-recognizer-unit-tests/240082/5?u=cleyton_messias
             try:
                 test_prof = model.score(testX,testLengths)
                 prob_dict[trained] = test_prof
             except:
                 prob_dict[trained] = float("-inf")
-            # this structure is just a normal pick the max value
+            # this structure is just a normal pick the max value calculation
             if test_prof > is_best:
                 is_best = test_prof
                 best_word = trained

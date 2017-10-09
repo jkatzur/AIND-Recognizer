@@ -51,11 +51,15 @@ class ModelSelector(object):
 def best_model(values, min_states, max_states, is_max):
     """
         Given an array of values representing model score, return the model with the
-        number of components that optimize the model score
+        number of components that optimize the model score. I am sure there is a pithy
+        list comprehension to do this more easily, but I was crunched for time so built this.
     """
-    # This section determines which number of components has the highest average log Likelihood
+    # This section determines which number of components has the highest (or lowest) value based on a values array
     best_num_components = min_states
     is_best = values[min_states]
+    # I built this logic so I could just centralize the method. Ended up realizing that some algorithms
+    # called for a max and some a min. Still thought keeping this logic in one place helped
+    # Do the if statement before the for loop for performance (no need to reevaluate that if each iteration)
     if is_max:
         for i in range(min_states, max_states):
             if values[i] > is_best:
@@ -66,7 +70,7 @@ def best_model(values, min_states, max_states, is_max):
             if values[i] < is_best:
                 is_best = values[i]
                 best_num_components = i
-    # Return the best model
+    # Return the number of components that maximizes the values
     return best_num_components
 
 class SelectorConstant(ModelSelector):
@@ -100,6 +104,8 @@ class SelectorBIC(ModelSelector):
     whereas the penalties 2p or p log N increase with increasing complexity
     The BIC applies a larger penalty whenN>e2 =7.4.
 
+    I found this thread very helpful in approaching BIC -> https://discussions.udacity.com/t/understanding-better-model-selection/232987/4
+    In particular, this gave me the exact understanding of how to calculate p
     """
 
     def select(self):
@@ -119,7 +125,9 @@ class SelectorBIC(ModelSelector):
                 L = hmm_model.score(self.X,self.lengths)
                 # number of data points
                 N = len(self.X[0])
-                # parameter calculation from
+                # parameter calculation from https://discussions.udacity.com/t/understanding-better-model-selection/232987/4
+                # This got me a bit confused at first because the documentation uses N to refer to number of states, but
+                # I am already using N to refer to number of data points, so I just kept that notation
                 p = (i ** 2) + (2 * i * N) - 1
                 values[i] = (-2 * L) + (p * np.log(N))
                 #print("For I = {} states; LL = {}, N = {}, P = {}, -2 * L = {}, p * np.log(N) = {},BIC = {}".format(i, L, N, p, (-2 * L), (p * np.log(N)),values[i]))
@@ -157,6 +165,7 @@ class SelectorDIC(ModelSelector):
     def comparison_ll(self, model):
         scores = []
         # print("In Comparison Function")
+        # Got the idea for this for, (testX, testLengths) structure from here: https://discussions.udacity.com/t/dic-always-giving-me-15-states/378722
         for word, (testX, testLengths) in self.hwords.items():
             scores.append(model.score(testX, testLengths))
         return scores
@@ -164,7 +173,7 @@ class SelectorDIC(ModelSelector):
     def select(self):
         try:
             state_range = range(self.min_n_components, self.max_n_components+1)
-            # This is how I track the BIC for each num components
+            # This is how I track the DIC and trained model for each num components
             values = {i:0 for i in state_range}
             models = {i:0 for i in state_range}
             # For each potential number of components do the following...
