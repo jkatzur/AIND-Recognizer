@@ -127,7 +127,7 @@ class SelectorBIC(ModelSelector):
         except:
             pass
 
-        # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
+        # Moved the picking of best model into a function for consistency between Model types
         return self.base_model(best_model(values, self.min_n_components, self.max_n_components+1, is_max=True))
 
 
@@ -182,7 +182,7 @@ class SelectorDIC(ModelSelector):
         except:
             pass
 
-        # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
+        # Moved the picking of best model into a function for consistency between Model types
         return self.base_model(best_model(values, self.min_n_components, self.max_n_components+1, is_max=True))
 
 class SelectorCV(ModelSelector):
@@ -223,5 +223,5 @@ class SelectorCV(ModelSelector):
         except:
             pass
 
-        # Moved the picking of best model into a function in the ModelSelector class for consistency between Model types
+        # Moved the picking of best model into a function for consistency between Model types
         return self.base_model(best_model(values, self.min_n_components, self.max_n_components+1, is_max=True))

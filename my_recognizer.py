@@ -16,10 +16,22 @@ def recognize(models: dict, test_set: SinglesData):
             ]
        guesses is a list of the best guess words ordered by the test set word_id
            ['WORDGUESS0', 'WORDGUESS1', 'WORDGUESS2',...]
-   """
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    """
     probabilities = []
     guesses = []
-    # TODO implement the recognizer
-    # return probabilities, guesses
-    raise NotImplementedError
+    for word, (testX, testLengths) in test_set.get_all_Xlengths().items():
+        is_best = float("-inf")
+        prob_dict = {}
+        for (trained, model) in models.items():
+            # Set this up due to -> https://discussions.udacity.com/t/failure-in-recognizer-unit-tests/240082/5?u=cleyton_messias
+            try:
+                test_prof = model.score(testX,testLengths)
+                prob_dict[trained] = test_prof
+            except:
+                prob_dict[trained] = float("-inf")
+            if test_prof > is_best:
+                is_best = test_prof
+                best_word = trained
+        probabilities.append(prob_dict)
+        guesses.append(best_word)
+    return probabilities, guesses
