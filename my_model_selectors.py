@@ -31,9 +31,6 @@ class ModelSelector(object):
     def select(self):
         raise NotImplementedError
 
-    # Created this function within the ModelSelector class so that I could repeat
-    # methodology between SelectorCV, BIC, and DIC methods without repeating code
-
     def base_model(self, num_states):
         # with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -49,7 +46,8 @@ class ModelSelector(object):
                 print("failure on {} with {} states".format(self.this_word, num_states))
             return None
 
-
+# Created this function within the ModelSelector class so that I could repeat
+# methodology between SelectorCV, BIC, and DIC methods without repeating code
 def best_model(values, min_states, max_states, is_max):
     """
         Given an array of values representing model score, return the model with the
